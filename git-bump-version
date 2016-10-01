@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# echoes the current max version
+current_max_version()
+{
+  local tag
+  local current_max='0.0.0'
+
+  for tag in $(git tag --list '[0-9]*')
+  do
+    if is_version "$tag"
+    then
+      compare_versions "$tag" "$current_max"
+      [[ "$?" == 1 ]] && current_max="$tag"
+    fi
+  done
+
+  echo "$current_max"
+}
+
+# returns 0 iff $1 is of the form major.minor.patch
+is_version()
+{
+  local IFS=.
+  local ver=($1)
+
+  [[ "${#ver[@]}" == 3 ]] || return 1
+
+  local i
+  for ((i=0; i<${#ver[@]}; i++))
+  do
+    case ${ver[i]} in
+      *[!0-9]*) return 1 ;;
+    esac
+  done
+
+  return 0
+}
+
+# returns 0 iff that version already exists
+version_exists()
+{
+  local tag
+
+  for tag in $(git tag --list '[0-9]*')
+  do
+    if is_version "$tag" && compare_versions "$1" "$tag"
+    then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+# from http://stackoverflow.com/a/4025065/4867444
+# returns 0 iff $1 == $2
+# returns 1 iff $1 > $2
+# retunrs 2 iff $2 > $1
+compare_versions()
+{
+    [[ $1 == $2 ]] && return 0
+
+    local IFS=.
+    local i ver1=($1) ver2=($2)
+    # fill empty fields in ver1 with zeros
+    for ((i=${#ver1[@]}; i<${#ver2[@]}; i++))
+    do
+        ver1[i]=0
+    done
+    for ((i=0; i<${#ver1[@]}; i++))
+    do
+        if [[ -z ${ver2[i]} ]]
+        then
+            # fill empty fields in ver2 with zeros
+            ver2[i]=0
+        fi
+        if ((10#${ver1[i]} > 10#${ver2[i]}))
+        then
+            return 1
+        fi
+        if ((10#${ver1[i]} < 10#${ver2[i]}))
+        then
+            return 2
+        fi
+    done
+    return 0
+}
+
+bump_current_max()
+{
+  local current_max=$(current_max_version)
+
+  local IFS=.
+  local ver=($current_max)
+  local index=$1
+
+  case ${ver[index]} in
+    '') ver[index]=1 ;;
+    *) ver[index]=$(( ver[index] + 1 )) ;;
+  esac
+
+  bump_to "${ver[*]}"
+}
+
+bump_to()
+{
+  if [ "$1" == '' ]
+  then
+    echo 'Argument expected'
+    return 1
+  fi
+
+  if ! is_version "$1"
+  then
+    echo "$1 is not a valid version"
+    return 2
+  fi
+
+  if version_exists "$1"
+  then
+    echo "Version $1 already exists"
+    return 3
+  fi
+
+  if git tag "$1"
+  then
+    echo "$1"
+  else
+    local status_code=$?
+    echo "Failed to bump version to $1 (status code $status_code)"
+    return $status_code
+  fi
+}
+
+main()
+{
+  case "$1" in
+    '') bump_current_max 2 ;;
+    '--patch') bump_current_max 2 ;;
+    '--minor') bump_current_max 1 ;;
+    '--major') bump_current_max 0 ;;
+    '--to') bump_to "$2" ;;
+  esac
+}
+
+main "$@"
