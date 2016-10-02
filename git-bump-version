@@ -99,6 +99,10 @@ bump_current_max()
     '') ver[index]=1 ;;
     *) ver[index]=$(( ver[index] + 1 )) ;;
   esac
+  for ((i=$(( index + 1 )); i<${#ver[@]}; i++))
+  do
+    ver[i]=0
+  done
 
   bump_to "${ver[*]}"
 }
