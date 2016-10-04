@@ -5,6 +5,14 @@ A very simple git plugin to be able to bump versions as git tags.
 Should only be using bash built-ins, with no external utilities, so should work
 on pretty much any platform, including cygwin.
 
+## Installation
+
+Just dump the main file somewhere in your `PATH`, e.g.:
+
+```bash
+sudo wget https://raw.githubusercontent.com/wk8/git-bump-version/master/git-bump-version -O /usr/local/bin/git-bump-version && sudo chmod +x /usr/local/bin/git-bump-version # or anywhere else in your PATH
+```
+
 ## Usage
 
 ```bash
